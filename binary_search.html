@@ -1,0 +1,247 @@
+<html>
+
+<body>
+    <canvas id="MyCanvas" width="800" height="600"></canvas>
+    <script>
+
+        function f_getRandomColor() {
+              var letters = '0123456789ABCDEF';
+              var color = '#';
+              for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+              }
+              return color;
+        }
+
+        function f_getRectangles(l_length){
+            var l_array = new Array(l_length)
+
+            var l_random_pos_x, l_random_pos_y;
+            var l_random_size_x, l_random_size_y;
+            var l_random_color;
+
+            for(var i=0; i < l_length; i++){
+                l_random_size_x = 20;
+                l_random_size_y = parseInt(Math.random() * 10 + 5) * 10;
+                l_random_pos_x = 320 + i*l_random_size_x;
+                l_random_pos_y = 380 - l_random_size_y;
+                l_random_color = f_getRandomColor();
+                l_array[i] = new c_Rectangle(l_random_pos_x, l_random_pos_y, l_random_size_x, l_random_size_y, l_random_color);
+            }
+            return l_array;
+        }
+
+        //----------------------------------------Class: Rectangle -------------------------------------------------------
+
+
+        function c_Rectangle(l_pos_x, l_pos_y, l_size_x, l_size_y, l_color){
+            this.positionX      = l_pos_x;
+            this.positionY      = l_pos_y;
+
+            this.newPositionX   = l_pos_x;
+            this.newPositionY   = l_pos_y;
+
+            this.sizeX          = l_size_x;
+            this.sizeY          = l_size_y;
+            this.color          = l_color;
+
+            this.isBeingChecked = false;
+            this.isFound        = false;
+
+            this.draw       = m_boxDraw;
+            this.move       = m_boxMove;
+        }
+
+        function m_boxMove(){
+            if(this.positionX < this.newPositionX){
+                this.positionX++;
+                return true;
+
+            }
+            else if(this.positionX > this.newPositionX){
+                this.positionX--;
+                return true;
+            }
+
+            return false;
+
+        }
+
+        function m_boxDraw(l_context){
+            if(this.isBeingChecked){
+                l_context.fillStyle = "red";
+                l_context.fillRect(this.positionX + this.sizeX/2 - 5, this.positionY - 11, 10, 10);
+            }
+            else if(this.isFound){
+                l_context.fillStyle = "green";
+                l_context.fillRect(this.positionX + this.sizeX/2 - 5, this.positionY - 11, 10, 10);
+            }
+
+            l_context.fillStyle = this.color;
+            l_context.fillRect(this.positionX, this.positionY, this.sizeX, this.sizeY);
+        }
+
+
+        //----------------------------------------Game Window Related-------------------------------------------------------
+
+        function* f_bubble_sort(l_arr){
+            var l_length = l_arr.length;
+            for(var i=0; i < l_length - 1;i++){
+                for(var j=0;j<l_length-i-1;j++){
+                    if(l_arr[j].sizeY > l_arr[j+1].sizeY){
+                        yield {x: l_arr[j], y: l_arr[j+1]};
+                        f_swap(l_arr, j, j+1);
+                    }
+                }
+            }
+        }
+
+        function f_swap(l_arr, i, j){
+            g_temp = l_arr[i];
+            l_arr[i] = l_arr[j];
+            l_arr[j] = g_temp;
+        }
+
+        function f_drawRectangles(l_context){
+            for(var i=0;i<g_length;i++){
+                g_rectangleArray[i].draw(l_context);
+            }
+        }
+
+        function f_drawBoundaryAndClearRect(){
+            g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+            g_context.fillStyle = "black";
+            g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+        }
+
+        function f_checkSorting(){
+            if(!g_isSorted){
+                if(!g_isSwapping){
+                    g_isSwapping = true
+                    g_swapPair = g_iterator.next().value
+
+                    if(g_swapPair){
+                        g_swapPair.x.newPositionX = g_swapPair.y.positionX
+                        g_swapPair.y.newPositionX = g_swapPair.x.positionX
+                    }
+                    else{
+                        g_isSorted = true
+                        console.log("To Search For: ", g_toSearchFor);
+                        for(var i=0;i<g_length;i++){
+                            console.log("SIZE: " + i + " = " + g_rectangleArray[i].sizeY);
+                        }
+                        console.log("Sorted!");
+                    }
+                }
+                else{
+                    if(!g_swapPair.x.move() && !g_swapPair.y.move()){
+                        g_isSwapping = false
+                    }
+                }
+            }
+        }
+
+
+        function f_check(l_arr, l_index, l_val){
+            console.log(l_arr[l_index].sizeY, l_val);
+            if(l_arr[l_index].sizeY == l_val){
+                l_arr[l_index].isBeingChecked = false;
+                l_arr[l_index].isFound = true;
+                return true;
+            }
+            l_arr[l_index].isBeingChecked = false;
+            return false;
+        }
+
+        function f_binarySearch(l_val){
+            if(g_isSearching){
+                g_rectangleArray[g_currentIndex].isBeingChecked = true;
+
+                if(g_frames!=0 && g_frames%g_frameRate == 0){
+                    if(!f_check(g_rectangleArray, g_currentIndex, l_val)){
+
+                        if(g_min_index >= g_max_index) g_searchComplete = true;
+
+                        else{
+                            if(l_val > g_rectangleArray[g_currentIndex]){
+                                g_min_index = g_currentIndex;
+                                g_currentIndex = parseInt((g_min_index + g_max_index)/2);
+                            }
+                            else{
+                                g_max_index = g_currentIndex;
+                                g_currentIndex = parseInt((g_min_index + g_max_index)/2);
+                            }
+                        }
+                    }
+                    else{
+                        g_rectangleArray[g_currentIndex].isBeingChecked = false;
+                        g_rectangleArray[g_currentIndex].isFound = true;
+                        g_isFound = true
+                        g_searchComplete =  true;
+                    }
+                }
+                if(g_searchComplete){
+                    g_isSearching = false;
+                    if(g_isFound){
+                        console.log("Search Complete. Found at index ", g_currentIndex);
+                    }
+                    else{
+                        console.log("Search Complete. Not Found");
+                    }
+                }
+            }
+            g_frames++;
+
+        }
+
+        function f_gameLoop(){
+            f_checkSorting();
+            if(g_isSorted){
+                f_binarySearch(g_toSearchFor);
+            }
+
+            f_drawBoundaryAndClearRect();
+            f_drawRectangles(g_context);
+        }
+
+
+        //----------------------------------------Window Related-------------------------------------------------------
+
+        var g_canvas        = document.getElementById("MyCanvas");
+        var g_context       = g_canvas.getContext("2d");
+        var g_canvasWidth   = g_canvas.width;
+        var g_canvasHeight  = g_canvas.height;
+
+        var g_frameRate     = 60;
+        var g_timePerFrame  = 1000/g_frameRate; //500;
+        var g_frames        = 0
+
+        //----------------------------------------Object Related-------------------------------------------------------
+        var g_length            = 10
+        var g_rectangleArray    = f_getRectangles(g_length)
+
+        //----------------------------------------Start----------------------------------------------------------------
+
+        var g_temp              = 0;
+        var g_isSwapping        = false;
+        var g_isSorted          = false;
+
+        var g_isSearching       = true;
+        var g_searchComplete    = false;
+        var g_isFound           = false;
+
+        var g_min_index         = 0;
+        var g_max_index         = g_length;
+        var g_currentIndex      = (g_min_index + g_max_index)/2;
+
+        var g_toSearchFor       = 70
+
+        const g_iterator        = f_bubble_sort(g_rectangleArray);
+
+        var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,129 @@
+<html>
+
+<body>
+    <canvas id="MyCanvas" width="800" height="600"></canvas>
+    <script>
+
+        //----------------------------------------Class: Rectangle -------------------------------------------------------
+
+        function c_Rectangle(l_pos_x, l_pos_y, l_size_x, l_size_y, l_color){
+            this.positionX      = l_pos_x;
+            this.positionY      = l_pos_y;
+
+            this.newPositionX   = l_pos_x;
+            this.newPositionY   = l_pos_y;
+
+            this.sizeX          = l_size_x;
+            this.sizeY          = l_size_y;
+            this.color          = l_color;
+
+            this.draw       = m_boxDraw;
+        }
+
+        function m_boxDraw(l_context){
+            l_context.fillStyle = this.color;
+            l_context.fillRect(this.positionX, this.positionY, this.sizeX, this.sizeY);
+        }
+        //----------------------------------------Class: Stack -------------------------------------------------------
+
+        function c_Stack(l_stack_pos_x, l_stack_pos_y, l_rect_size_x, l_rect_size_y){
+            this.__data = new Array();
+            this.__back = -1;
+
+            this.__stack_pos_x  = l_stack_pos_x;
+            this.__stack_pos_y  = l_stack_pos_y;
+            this.__rect_size_x  = l_rect_size_x;
+            this.__rect_size_y  = l_rect_size_y;
+
+            this.__temp_pos_y   = 0;
+
+            this.push   = m_push;
+            this.pop    = m_pop;
+
+            this.draw   = m_draw;
+        }
+
+        function m_push(){
+            this.__back++;
+            if(this.__back == 0){
+                this.__temp_pos_y = this.__stack_pos_y - this.__rect_size_y;
+            }
+            else if(this.__back > 0){
+                this.__temp_pos_y = this.__data[this.__back-1].positionY - this.__rect_size_y;
+            }
+            this.__data[this.__back] = new c_Rectangle(this.__stack_pos_x, this.__temp_pos_y,
+                                            this.__rect_size_x, this.__rect_size_y, f_getRandomColor());
+        }
+
+        function m_pop(){
+            if(this.__back < 0) return;
+            this.__data.splice(this.__back, 1);
+            this.__back--;
+        }
+
+        function m_draw(l_context){
+            for(var i = 0; i < this.__data.length; i++){
+                this.__data[i].draw(l_context);
+            }
+        }
+
+        //----------------------------------------Utility Related-------------------------------------------------------
+
+        function f_getRandomColor() {
+              var letters = '0123456789ABCDEF';
+              var color = '#';
+              for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+              }
+              return color;
+        }
+
+        //----------------------------------------Game Window Related-------------------------------------------------------
+
+        function f_drawBoundaryAndClearRect(){
+            g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+            g_context.fillStyle = "black";
+            g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+        }
+
+        function f_gameLoop(){
+            f_drawBoundaryAndClearRect();
+            g_stack.draw(g_context);
+        }
+
+
+        //----------------------------------------Window Related-------------------------------------------------------
+
+        var g_canvas        = document.getElementById("MyCanvas");
+        var g_context       = g_canvas.getContext("2d");
+        var g_canvasWidth   = g_canvas.width;
+        var g_canvasHeight  = g_canvas.height;
+
+        //----------------------------------------Object Related-------------------------------------------------------
+
+        var g_rect_size_x   = 200;
+        var g_rect_size_y   = 10;
+
+        var g_stack         = new c_Stack(g_canvasWidth/2 - g_rect_size_x/2, g_canvasHeight - 1, g_rect_size_x, g_rect_size_y);
+        g_stack.push();
+
+        //----------------------------------------Start----------------------------------------------------------------
+
+        f_gameLoop();
+
+        document.addEventListener('keydown', function(event){
+            switch(event.keyCode){
+                case 65:
+                    g_stack.push();
+                    break;
+                case 68:
+                    g_stack.pop();
+                    break;
+            }
+            f_gameLoop();
+        });
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,396 @@
+<html>
+
+<body>
+    <canvas id="MyCanvas" width="800" height="800"></canvas>
+    <script>
+
+        //----------------------------------------Class: Node -------------------------------------------------------
+
+        function c_Node(l_grid_pos_i, l_grid_pos_j, l_pos_x, l_pos_y, l_size){
+
+            //----------------------------------------E -> Empty -------------------------------------------------------
+            //----------------------------------------O -> Obstacle -------------------------------------------------------
+            //----------------------------------------S -> Start -------------------------------------------------------
+            //----------------------------------------T -> Target -------------------------------------------------------
+            //----------------------------------------P -> Path -------------------------------------------------------
+
+            this.grid_pos_i = l_grid_pos_i;
+            this.grid_pos_j = l_grid_pos_j;
+            this.f          = 0;
+            this.g          = 0;
+            this.h          = 0;
+            this.positionX  = l_pos_x;
+            this.positionY  = l_pos_y;
+            this.size       = l_size;
+            this.type       = "E";
+            this.color      = "white";
+            this.isClicked  = false;
+            this.parent     = null;
+
+            this.draw       = m_node_draw;
+            this.hit        = m_node_hit;
+            this.changeType = m_node_changeType;
+            this.reset      = m_node_reset;
+        }
+
+        function m_node_changeType(l_type){
+            this.type = l_type;
+            switch(this.type){
+                case "E":
+                    this.color = "white";
+                    break;
+                case "O":
+                    this.color = "black";
+                    break;
+                case "S":
+                    this.color = "green";
+                    break;
+                case "T":
+                    this.color = "red";
+                    break;
+                case "P":
+                    this.color = "yellow";
+                    break;
+            }
+        }
+
+        function m_node_hit(l_pos_x, l_pos_y){
+            if(l_pos_x >= this.positionX && l_pos_x <= this.positionX + this.size
+            && l_pos_y >= this.positionY && l_pos_y <= this.positionY + this.size){
+                return true;
+            }
+            return false;
+        }
+
+        function m_node_draw(l_context){
+            if(this.isClicked){
+                l_context.lineWidth = 6;
+                l_context.strokeStyle = "yellow";
+                l_context.strokeRect(this.positionX-6, this.positionY-6, this.size + 12, this.size+12);
+            }
+
+            l_context.fillStyle = this.color;
+            l_context.lineWidth = 2;
+            l_context.strokeStyle = "black";
+            l_context.strokeRect(this.positionX, this.positionY, this.size, this.size);
+            l_context.fillRect(this.positionX+2, this.positionY+2, this.size-4, this.size-4);
+
+        }
+
+        function m_node_reset(){
+            this.parent = null;
+            this.f = 0;
+            this.g = 0;
+            this.h = 0;
+            if(this.type == "P") this.changeType("E");
+        }
+
+        //----------------------------------------Class: Grid-------------------------------------------------------
+
+        function c_Grid(l_pos_x, l_pos_y, l_rows, l_columns, l_cell_size){
+            this.positionX                  = l_pos_x;
+            this.positionY                  = l_pos_y;
+            this.numberOfHorizontalCells    = l_columns;
+            this.numberOfVerticalCells      = l_rows;
+            this.cellSize                   = l_cell_size;
+
+            this.cells                      = new Array(this.numberOfVerticalCells);
+            this.selectedNode               = null;
+
+            for(var i=0; i<this.numberOfVerticalCells; i++){
+                this.cells[i] = new Array(this.numberOfHorizontalCells);
+            }
+
+            for(var i=0; i<this.numberOfVerticalCells; i++){
+                for(var j=0;j<this.numberOfHorizontalCells; j++){
+                    this.cells[i][j] = new c_Node(i, j, this.positionX + j*this.cellSize, this.positionY + i*this.cellSize, this.cellSize);
+                }
+            }
+
+            this.draw   = m_grid_draw;
+            this.hit    = m_grid_hit;
+        }
+
+        function m_grid_hit(l_pos_x, l_pos_y){
+            for(var i=0; i<this.numberOfVerticalCells; i++){
+                for(var j=0; j<this.numberOfHorizontalCells; j++){
+                    if(this.cells[i][j].hit(l_pos_x, l_pos_y)){
+                        this.selectedNode = this.cells[i][j];
+                        return this.selectedNode;
+                    }
+                }
+            }
+            this.selectedNode = null;
+            return null;
+        }
+
+        function m_grid_draw(l_context){
+            for(var i=0; i<this.numberOfVerticalCells; i++){
+                for(var j=0; j<this.numberOfHorizontalCells; j++){
+                    this.cells[i][j].draw(l_context);
+                }
+            }
+            if(this.selectedNode) this.selectedNode.draw(l_context);
+        }
+
+        //----------------------------------------A* Implementation ------------------------------------------------------
+
+        function f_A_algorithm(l_grid, l_start_node, l_target_node){
+            //set h values
+            var l_open_list = new Array();
+            var l_closed_list = new Array();
+            var l_current_element = null;
+            var l_current_element_neighbours = null;
+            var l_path = new Array();
+            var l_temp_path_node = null;
+
+            for(var i=0;i<l_grid.numberOfVerticalCells;i++){
+                for(var j=0;j<l_grid.numberOfHorizontalCells;j++){
+                    if(l_grid.cells[i][j] == l_start_node || l_grid.cells[i][j] == l_target_node) continue;
+                    l_grid.cells[i][j].h = parseInt(Math.abs(l_grid.cells[i][j].positionX - l_target_node.positionX) / l_grid.cellSize)
+                                            + parseInt(Math.abs(l_grid.cells[i][j].positionY - l_target_node.positionY) / l_grid.cellSize);
+                }
+            }
+
+            l_open_list.push(l_start_node);
+
+            while(l_open_list.length > 0){
+                l_current_element = f_getElementWithLowestF(l_open_list);
+                l_current_element_neighbours = f_getNeighbours(l_grid, l_open_list, l_closed_list, l_current_element);
+                if(f_elementInList(l_current_element_neighbours, l_target_node)){
+                    l_target_node.parent = l_current_element;
+                    l_temp_path_node = l_current_element;
+                    while(l_temp_path_node.parent){
+                        l_path.push(l_temp_path_node);
+                        l_temp_path_node = l_temp_path_node.parent;
+                    }
+                    return l_path;
+                }
+                f_setValuesOfNeighbours(l_current_element_neighbours, l_current_element);
+                f_setParent(l_current_element_neighbours, l_current_element);
+                f_removeElementFromList(l_open_list, l_current_element);
+                f_pushNeighboursToOpen(l_current_element_neighbours, l_open_list);
+                l_closed_list.push(l_current_element);
+            }
+        }
+
+        function f_removeElementFromList(l_list, l_element){
+            var l_length = l_list.length;
+            for(var i=0; i<l_length; i++){
+                if(l_list[i] == l_element){
+                    l_list.splice(i, 1);
+                    return;
+                }
+            }
+        }
+
+        function f_pushNeighboursToOpen(l_neighbours, l_open_list){
+            var l_length = l_neighbours.length;
+            for(var i=0; i<l_length;i++){
+                l_open_list.push(l_neighbours[i]);
+            }
+        }
+
+        function f_setParent(l_neighbours, l_element){
+            var l_length = l_neighbours.length;
+            for(var i=0;i<l_length;i++){
+                l_neighbours[i].parent = l_element;
+            }
+        }
+
+        function f_setValuesOfNeighbours(l_neighbours, l_element){
+            var l_length = l_neighbours.length;
+            for(var i=0;i<l_length;i++){
+                l_neighbours[i].g = l_element.g + 1;
+                l_neighbours[i].f = l_neighbours[i].g + l_neighbours[i].h;
+            }
+        }
+
+        function f_getElementWithLowestF(l_list){
+            var l_min_index = 0;
+            var l_length = l_list.length;
+            for(var i=0; i<l_length;i++){
+                if(l_list[i].f < l_list[l_min_index].f) l_min_index = i;
+            }
+            return l_list[l_min_index];
+        }
+
+        function f_getNeighbours(l_grid, l_open_list, l_closed_list, l_element){
+            var l_neighbours = new Array();
+            var l_temp = null;
+            //left
+            if(l_element.grid_pos_j !=0){
+                l_temp = l_grid.cells[l_element.grid_pos_i][l_element.grid_pos_j-1];
+                if(l_temp.type != "O" && !f_elementInList(l_open_list, l_temp) && !f_elementInList(l_closed_list, l_temp)) l_neighbours.push(l_temp);
+            }
+
+            //right
+            if(l_element.grid_pos_j !=l_grid.numberOfHorizontalCells-1){
+                l_temp = l_grid.cells[l_element.grid_pos_i][l_element.grid_pos_j+1];
+                if(l_temp.type != "O" && !f_elementInList(l_open_list, l_temp) && !f_elementInList(l_closed_list, l_temp)) l_neighbours.push(l_temp);
+            }
+
+            //up
+            if(l_element.grid_pos_i != 0){
+                l_temp = l_grid.cells[l_element.grid_pos_i-1][l_element.grid_pos_j];
+                if(l_temp.type != "O" && !f_elementInList(l_open_list, l_temp) && !f_elementInList(l_closed_list, l_temp)) l_neighbours.push(l_temp);
+            }
+
+            //down
+            if(l_element.grid_pos_i != l_grid.numberOfVerticalCells-1){
+                l_temp = l_grid.cells[l_element.grid_pos_i+1][l_element.grid_pos_j];
+                if(l_temp.type != "O" && !f_elementInList(l_open_list, l_temp) && !f_elementInList(l_closed_list, l_temp)) l_neighbours.push(l_temp);
+            }
+
+            return l_neighbours;
+        }
+
+        function f_elementInList(l_list, l_element){
+            var l_length = l_list.length;
+            for(var i=0; i < l_length; i++){
+                if(l_list[i] == l_element) return true;
+            }
+            return false;
+        }
+
+        function f_reset(l_grid){
+            g_pathIndex = 0;
+            g_hasReached = false;
+            for(var i=0; i<l_grid.numberOfVerticalCells; i++){
+                for(var j=0; j<l_grid.numberOfHorizontalCells; j++){
+                    l_grid.cells[i][j].reset();
+                }
+            }
+        }
+
+        //----------------------------------------Game Window Related-------------------------------------------------------
+
+        function f_drawBoundaryAndClearRect(){
+            g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+            g_context.strokeStyle = "black";
+            g_context.lineWidth = 2;
+            g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+        }
+
+        function f_gameLoop(){
+            f_drawBoundaryAndClearRect();
+            g_grid.draw(g_context);
+
+            if(g_frameCounter != 0 && g_frameCounter % 5 == 0){
+                if(g_path && !g_hasReached){
+                    g_path[g_path.length - g_pathIndex - 1].changeType("P");
+                    g_pathIndex++;
+                    if(g_pathIndex >= g_path.length) {
+                        g_hasReached = true;
+                        g_path = null;
+                    }
+                }
+                g_frameCounter = 1;
+            }
+            g_frameCounter++;
+        }
+
+
+        //----------------------------------------Window Related-------------------------------------------------------
+
+        var g_canvas        = document.getElementById("MyCanvas");
+        var g_context       = g_canvas.getContext("2d");
+        var g_canvasWidth   = g_canvas.width;
+        var g_canvasHeight  = g_canvas.height;
+
+        var g_frameRate     = 120;
+        var g_timePerFrame  = 1000/g_frameRate; //500;
+        var g_frameCounter  = 0;
+
+        //----------------------------------------Object Related-------------------------------------------------------
+
+        var g_grid          = new c_Grid(100, 100, 30, 30, 20);
+        var g_selectedNode  = null;
+        var g_startNode     = null;
+        var g_targetNode    = null;
+        var g_path          = null;
+
+        var g_hasReached    = false;
+        var g_pathIndex     = 0;
+
+        //----------------------------------------Start----------------------------------------------------------------
+
+        var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+        document.write("<br> Press \"e\" to set Empty");
+        document.write("<br> Press \"o\" to set Obstacle");
+        document.write("<br> Press \"s\" to set Start");
+        document.write("<br> Press \"t\" to set Target");
+        document.write("<br> Press Enter to Finding Path");
+        document.write("<br> Press Escape to reset");
+
+
+        g_canvas.addEventListener("click", function(event){
+            if(g_selectedNode) g_selectedNode.isClicked = false;
+
+            g_selectedNode = g_grid.hit(event.clientX, event.clientY);
+
+            if(g_selectedNode) g_selectedNode.isClicked = true;
+        });
+
+        document.addEventListener("keydown", function(event){
+            switch(event.key){
+                case "e":
+                    if(g_selectedNode) {
+                        if(g_selectedNode == g_startNode) g_startNode = null;
+                        if(g_selectedNode == g_targetNode) g_targetNode = null;
+                        g_selectedNode.isClicked = false;
+                        g_selectedNode.changeType("E");
+                        g_selectedNode = null;
+                    }
+                    break;
+                case "o":
+                    if(g_selectedNode) {
+                        if(g_selectedNode == g_startNode) g_startNode = null;
+                        if(g_selectedNode == g_targetNode) g_targetNode = null;
+                        g_selectedNode.isClicked = false;
+                        g_selectedNode.changeType("O");
+                        g_selectedNode = null;
+                    }
+                    break;
+                case "s":
+                    if(g_selectedNode) {
+                        if(g_selectedNode == g_targetNode) g_targetNode = null;
+                        g_selectedNode.isClicked = false;
+                        if(g_startNode) g_startNode.changeType("E");
+                        g_startNode = g_selectedNode;
+                        g_startNode.changeType("S");
+                        g_selectedNode = null;
+                    }
+                    break;
+                case "t":
+                    if(g_selectedNode) {
+                        if(g_selectedNode == g_startNode) g_startNode = null;
+                        g_selectedNode.isClicked = false;
+                        if(g_targetNode) g_targetNode.changeType("E");
+                        g_targetNode = g_selectedNode;
+                        g_targetNode.changeType("T");
+                        g_selectedNode = null;
+                    }
+                    break;
+                case "Enter":
+                    if(g_startNode && g_targetNode){
+                        //can start algo now;
+                        f_reset(g_grid);
+                        g_path = f_A_algorithm(g_grid, g_startNode, g_targetNode);
+                        if(!g_path){
+                            console.log("No Path Available!");
+                        }
+
+                    }
+                    break;
+                case "Escape":
+                    f_reset(g_grid);
+                    break;
+            }
+        });
+
+    </script>
+</body>
+
+</html>

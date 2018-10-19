@@ -1,0 +1,291 @@
+<html>
+
+<body>
+    <canvas id="MyCanvas" width="1020" height="600"></canvas>
+    <script>
+
+        //----------------------------------------Class: Rectangle -------------------------------------------------------
+
+        function c_Rectangle(l_pos_x, l_pos_y, l_size_x, l_size_y, l_color){
+            this.positionX      = l_pos_x;
+            this.positionY      = l_pos_y;
+
+            this.sizeX          = l_size_x;
+            this.sizeY          = l_size_y;
+            this.color          = l_color;
+
+            this.draw       = m_boxDraw;
+        }
+
+        function m_boxDraw(l_context){
+            l_context.fillStyle = this.color;
+            l_context.fillRect(this.positionX, this.positionY, this.sizeX, this.sizeY);
+        }
+        //----------------------------------------Class: Stack -------------------------------------------------------
+
+        function c_Stack(l_stack_pos_x, l_stack_pos_y, l_rect_size_y){
+            this.__data = new Array();
+            this.__back = -1;
+
+            this.__stack_pos_x  = l_stack_pos_x;
+            this.__stack_pos_y  = l_stack_pos_y;
+            this.__rect_size_y  = l_rect_size_y;
+
+            this.__temp_pos_x   = 0;
+            this.__temp_pos_y   = 0;
+
+            this.push_size  = m_stack_push_size;
+            this.push_rect  = m_stack_push_rect;
+            this.pop        = m_stack_pop;
+            this.peek       = m_stack_peek;
+            this.is_empty    = m_stack_is_empty;
+
+            this.draw   = m_stack_draw;
+        }
+
+        function m_stack_push_size(l_rect_size_x){
+            this.__back++;
+            if(this.__back == 0){
+                this.__temp_pos_y = this.__stack_pos_y - this.__rect_size_y;
+                this.__temp_pos_x = this.__stack_pos_x - l_rect_size_x/2;
+            }
+            else if(this.__back > 0){
+                this.__temp_pos_y = this.__data[this.__back-1].positionY - this.__rect_size_y - 5;
+                this.__temp_pos_x = this.__data[this.__back-1].positionX + (this.__data[this.__back-1].sizeX - l_rect_size_x)/2;
+            }
+            this.__data[this.__back] = new c_Rectangle(this.__temp_pos_x, this.__temp_pos_y,
+                                            l_rect_size_x, this.__rect_size_y, f_getRandomColor());
+        }
+
+        function m_stack_push_rect(l_rect){
+            this.__back++;
+            if(this.__back == 0){
+                this.__temp_pos_y = this.__stack_pos_y - this.__rect_size_y;
+                this.__temp_pos_x = this.__stack_pos_x - l_rect.sizeX/2;
+            }
+            else if(this.__back > 0){
+                this.__temp_pos_y = this.__data[this.__back-1].positionY - this.__rect_size_y - 5;
+                this.__temp_pos_x = this.__data[this.__back-1].positionX + (this.__data[this.__back-1].sizeX - l_rect.sizeX)/2;
+            }
+            this.__data[this.__back] = new c_Rectangle(this.__temp_pos_x, this.__temp_pos_y,
+                                            l_rect.sizeX, l_rect.sizeY, l_rect.color);
+        }
+
+        function m_stack_pop(){
+            if(this.__back < 0) return;
+            var l_temp = this.__data[this.__back];
+            this.__data.splice(this.__back, 1);
+            this.__back--;
+            return l_temp;
+        }
+
+        function m_stack_peek(){
+            if(this.__back < 0) return 0;
+            return this.__data[this.__back];
+        }
+
+        function m_stack_is_empty(){
+            if(this.__back < 0) return true;
+            return false;
+        }
+
+        function m_stack_draw(l_context){
+            for(var i = 0; i < this.__data.length; i++){
+                this.__data[i].draw(l_context);
+            }
+        }
+
+        //----------------------------------------Class: Tower -------------------------------------------------------
+
+        function c_Tower(l_tower_pos_x, l_tower_pos_y, l_tower_size_x, l_tower_size_y, l_rect_size_y){
+            this.__stack = new c_Stack(l_tower_pos_x + l_tower_size_x/2, l_tower_pos_y - 5, l_rect_size_y);
+
+            this.__tower_pos_x  = l_tower_pos_x;
+            this.__tower_pos_y  = l_tower_pos_y;
+            this.__tower_size_x = l_tower_size_x;
+            this.__tower_size_y = l_tower_size_y;
+
+            this.__tower_bounding_box = new c_Rectangle(l_tower_pos_x, l_tower_pos_y - l_tower_size_y, l_tower_size_x, l_tower_size_y, "#FFFFFF");
+
+            this.push_size  = m_tower_push_size;
+            this.push_rect  = m_tower_push_rect;
+            this.pop        = m_tower_pop;
+            this.peek       = m_tower_peek;
+            this.is_empty   = m_tower_is_empty;
+            this.hit        = m_tower_hit;
+
+            this.draw   = m_tower_draw;
+        }
+
+        function m_tower_push_size(l_size_x){
+            var l_temp = this.__stack.peek();
+            if(l_temp){
+                if(l_size_x < l_temp.sizeX){
+                    this.__stack.push_size(l_size_x);
+                }
+                else return -1; //cant add this one
+            }
+            else{
+                this.__stack.push_size(l_size_x); //added first
+            }
+        }
+
+        function m_tower_push_rect(l_rect){
+            var l_temp = this.__stack.peek();
+            if(l_temp){
+                if(l_rect.sizeX < l_temp.sizeX){
+                    this.__stack.push_rect(l_rect);
+                }
+                else return -1; //cant add this one
+            }
+            else{
+                this.__stack.push_rect(l_rect); //added first
+            }
+        }
+
+        function m_tower_pop(){
+            return this.__stack.pop();
+        }
+
+        function m_tower_peek(){
+            return this.__stack.peek();
+        }
+
+        function m_tower_is_empty(){
+            return this.__stack.is_empty();
+        }
+
+        function m_tower_hit(l_pos_x, l_pos_y){
+            if(l_pos_x >= this.__tower_bounding_box.positionX && l_pos_x <= this.__tower_bounding_box.positionX + this.__tower_bounding_box.sizeX
+            && l_pos_y >= this.__tower_bounding_box.positionY && l_pos_y <= this.__tower_bounding_box.positionY + this.__tower_bounding_box.sizeY){
+                return true;
+            }
+            return false;
+        }
+
+        function m_tower_draw(l_context){
+            g_context.beginPath();
+            g_context.lineWidth = 2;
+            g_context.moveTo(this.__tower_pos_x, this.__tower_pos_y);
+            g_context.lineTo(this.__tower_pos_x + this.__tower_size_x, this.__tower_pos_y);
+            g_context.moveTo(this.__tower_pos_x + this.__tower_size_x/2, this.__tower_pos_y);
+            g_context.lineTo(this.__tower_pos_x + this.__tower_size_x/2, this.__tower_pos_y - this.__tower_size_y);
+            g_context.stroke();
+            this.__stack.draw(l_context);
+        }
+
+        //----------------------------------------Utility Related-------------------------------------------------------
+
+        function f_getRandomColor() {
+              var letters = '0123456789ABCDEF';
+              var color = '#';
+              for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+              }
+              return color;
+        }
+
+        //----------------------------------------Game Window Related-------------------------------------------------------
+
+        function f_drawBoundaryAndClearRect(){
+            g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+            g_context.fillStyle = "black";
+            g_context.lineWidth = 2;
+            g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+        }
+
+        function f_drawText(l_text, l_pos_x, l_pos_y){
+            g_context.font = "30px Arial";
+            g_context.fillText(l_text, l_pos_x, l_pos_y);
+        }
+
+        function f_gameLoop(){
+            f_drawBoundaryAndClearRect();
+            f_drawText("Total Moves: " + g_total_moves, 100, 100);
+            g_tower_start.draw(g_context);
+            g_tower_mid.draw(g_context);
+            g_tower_end.draw(g_context);
+        }
+
+
+        //----------------------------------------Window Related-------------------------------------------------------
+
+        var g_canvas        = document.getElementById("MyCanvas");
+        var g_context       = g_canvas.getContext("2d");
+        var g_canvasWidth   = g_canvas.width;
+        var g_canvasHeight  = g_canvas.height;
+
+        var g_frameRate     = 60;
+        var g_timePerFrame  = 1000/g_frameRate; //500;
+
+        //----------------------------------------Object Related-------------------------------------------------------
+
+        var g_tower_currently_selected = 0;
+        var g_total_moves              = 0;
+
+        var g_rect_size_y   = 10;
+        var g_tower_size_x  = 200;
+        var g_tower_size_y  = 150;
+
+        var g_tower_start   = new c_Tower(100, 500, g_tower_size_x, g_tower_size_y, g_rect_size_y);
+        var g_tower_mid     = new c_Tower(400, 500, g_tower_size_x, g_tower_size_y, g_rect_size_y);
+        var g_tower_end     = new c_Tower(700, 500, g_tower_size_x, g_tower_size_y, g_rect_size_y);
+
+        g_tower_start.push_size(250);
+        g_tower_start.push_size(200);
+        g_tower_start.push_size(150);
+        g_tower_start.push_size(100);
+        g_tower_start.push_size(50);
+
+        //----------------------------------------Start----------------------------------------------------------------
+
+        var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+        g_canvas.addEventListener("click", function(event){
+            if(g_tower_start.hit(event.clientX, event.clientY)) {
+                if(g_tower_currently_selected == 0){
+                    g_tower_currently_selected = g_tower_start;
+                }
+                else{
+                    if(g_tower_currently_selected.peek() != 0 && g_tower_start.push_rect(g_tower_currently_selected.peek()) != -1){
+                        g_tower_currently_selected.pop();
+                        g_total_moves++;
+                    }
+                    g_tower_currently_selected = 0;
+                }
+            }
+            else if(g_tower_mid.hit(event.clientX, event.clientY)) {
+                if(g_tower_currently_selected == 0){
+                    g_tower_currently_selected = g_tower_mid;
+                }
+                else{
+                    if(g_tower_currently_selected.peek() != 0 && g_tower_mid.push_rect(g_tower_currently_selected.peek()) != -1){
+                        g_tower_currently_selected.pop();
+                        g_total_moves++;
+
+                    }
+                    g_tower_currently_selected = 0;
+                }
+            }
+            else if(g_tower_end.hit(event.clientX, event.clientY)) {
+                if(g_tower_currently_selected == 0){
+                    g_tower_currently_selected = g_tower_end;
+                }
+                else{
+                    if(g_tower_currently_selected.peek() != 0 && g_tower_end.push_rect(g_tower_currently_selected.peek()) != -1){
+                        g_tower_currently_selected.pop();
+                        g_total_moves++;
+                        if(g_tower_start.is_empty() && g_tower_mid.is_empty()){
+                            alert("You Win. You used " + g_total_moves + " moves");
+                        }
+                    }
+                    g_tower_currently_selected = 0;
+                }
+            }
+
+        });
+
+    </script>
+</body>
+
+</html>

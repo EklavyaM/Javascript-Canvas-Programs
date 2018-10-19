@@ -1,0 +1,82 @@
+<html>
+
+<body>
+    <canvas id="MyCanvas" width="1020" height="600"></canvas>
+    <script>
+
+        function c_Contacts(l_pos_x, l_pos_y){
+            this.contacts   = new Array(26);
+            this.positionX  = l_pos_x;
+            this.positionY  = l_pos_y;
+            this.fontSize   = 15;
+
+            this.addContact = m_addContact;
+            this.draw       = m_draw;
+        }
+
+        function m_addContact(l_name){
+            var l_temp_index = l_name.toLowerCase().charCodeAt(0) - 97
+            this.contacts[l_temp_index] = l_name;
+            return l_temp_index;
+        }
+
+        function m_draw(l_context){
+            l_context.font = this.fontSize.toString() + "px Arial";
+
+            for(var i=0; i<26; i++){
+                if(this.contacts[i] != null){
+                    l_context.fillText(this.contacts[i], this.positionX,
+                    this.positionY + i*(this.fontSize + 2));
+                }
+            }
+
+        }
+
+        //----------------------------------------Game Window Related-------------------------------------------------------
+
+        function f_drawBoundaryAndClearRect(){
+            g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+            g_context.fillStyle = "black";
+            g_context.lineWidth = 2;
+            g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+        }
+
+
+        function f_gameLoop(){
+            f_drawBoundaryAndClearRect();
+            g_contactsList.draw(g_context);
+        }
+
+
+        //----------------------------------------Window Related-------------------------------------------------------
+
+        var g_canvas        = document.getElementById("MyCanvas");
+        var g_context       = g_canvas.getContext("2d");
+        var g_canvasWidth   = g_canvas.width;
+        var g_canvasHeight  = g_canvas.height;
+
+        var g_frameRate     = 60;
+        var g_timePerFrame  = 1000/g_frameRate; //500;
+
+        //----------------------------------------Object Related-------------------------------------------------------
+
+        var g_contactsList  = new c_Contacts(400, 50);
+        var g_temp_contact = null;
+        g_contactsList.addContact("Random");
+
+        //----------------------------------------Start----------------------------------------------------------------
+        document.write("<br><br>Press \"a\" to add contacts");
+        var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+        document.addEventListener("keypress", function(event){
+            if(event.key == "a"){
+                g_temp_contact = prompt("Enter Name: ");
+                if(g_temp_contact) g_contactsList.addContact(g_temp_contact);
+                g_temp_contact = null;
+            }
+        });
+
+    </script>
+</body>
+
+</html>

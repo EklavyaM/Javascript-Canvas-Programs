@@ -1,0 +1,180 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "timer.js"></script>
+        <script type = "text/javascript" src = "button.js"></script>
+        <script type = "text/javascript" src = "cell.js"></script>
+        <script type = "text/javascript" src = "grid.js"></script>
+
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="500" height="700"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_drawBoundaryAndClearRect(){
+                g_context.clearRect(0,0,g_canvasWidth,g_canvasHeight);
+                g_context.strokeStyle = "black";
+                g_context.lineWidth = 4;
+                g_context.strokeRect(0,0, g_canvasWidth, g_canvasHeight);
+            }
+
+            function f_drawLine(l_pos_x, l_pos_y, l_padding){
+                g_context.fillStyle = "black";
+                g_context.fillRect(l_pos_x + l_padding, l_pos_y, g_canvasWidth - 2 * l_padding, 2);
+            }
+
+            function f_drawText(l_pos_x, l_pos_y, text, l_font_size = 48){
+                g_context.font = l_font_size.toString()+"px serif";
+                g_context.textAlign = "center";
+                g_context.textBaseline = "middle";
+                g_context.strokeStyle = "black";
+                g_context.lineWidth = 2;
+                g_context.strokeText(text, l_pos_x, l_pos_y);
+            }
+
+            function f_showMenu(){
+                f_drawBoundaryAndClearRect();
+                f_drawText(g_canvasWidth/2, 48, "Tile", 48);
+                f_drawLine(0, 90, 30);
+                f_drawText(g_canvasWidth/2, 160, "Choose Difficulty", 36);
+                g_buttonEasy.draw(g_context);
+                g_buttonMedium.draw(g_context);
+                g_buttonHard.draw(g_context);
+            }
+
+            function f_runGame(){
+                f_checkIfSolved();
+                g_timer.tick();
+
+                f_drawBoundaryAndClearRect();
+                g_timer.draw(g_context);
+                f_drawLine(0, 90, 30);
+                g_grid.draw(g_context);
+                g_buttonRestart.draw(g_context);
+            }
+
+            function f_gameLoop(){
+                if(g_showingMainMenu){
+                    f_showMenu();
+                }
+                else{
+                    f_runGame();
+                }
+            }
+
+            //----------------------------------------Logic Related-------------------------------------------------------
+
+            function f_checkIfSolved(){
+                if(!g_wasSolved && g_grid.isSolved()){
+                    g_timer.stop();
+                    g_wasSolved = true;
+                    g_buttonRestart.setActive(true);
+                }
+            }
+
+            function f_reset(){
+                g_wasSolved = false;
+                g_timer.reset();
+                g_grid.reset();
+                g_buttonRestart.setActive(false);
+                g_buttonEasy.setActive(true);
+                g_buttonMedium.setActive(true);
+                g_buttonHard.setActive(true);
+                g_showingMainMenu = true;
+            }
+
+            function f_setMenuInactive(){
+                g_showingMainMenu = false;
+                g_buttonEasy.setActive(false);
+                g_buttonMedium.setActive(false);
+                g_buttonHard.setActrive(false);
+            }
+
+            function f_setEasyDifficulty(){
+                g_grid.shuffle(15);
+                f_setMenuInactive();
+            }
+
+            function f_setMediumDifficulty(){
+                g_grid.shuffle(20);
+                f_setMenuInactive();
+            }
+
+            function f_setHardDifficulty(){
+                g_grid.shuffle(25);
+                f_setMenuInactive();
+            }
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            var g_canvas        = document.getElementById("MyCanvas");
+            var g_context       = g_canvas.getContext("2d");
+            var g_canvasWidth   = g_canvas.width;
+            var g_canvasHeight  = g_canvas.height;
+
+            var g_frameRate     = 60;
+            var g_timePerFrame  = 1000/g_frameRate; //500;
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_cellSize          = (g_canvasWidth * g_canvasHeight) / 4000;
+            var g_gridCells         = 4;
+            var g_gridPosX          = (g_canvasWidth - (g_gridCells * g_cellSize))/2
+            var g_timer             = new c_Timer(g_canvasWidth/2, 48, g_frameRate, 48, "serif", "black", 2);
+            var g_grid              = new c_Grid(g_gridPosX, 160, g_gridCells, g_gridCells, g_cellSize);
+            var g_buttonRestart     = new c_Button(g_gridPosX, 550, g_cellSize * g_gridCells, 100, f_reset, "Restart");
+
+            var g_buttonEasy        = new c_Button(g_gridPosX, 250, g_cellSize * g_gridCells, 100, f_setEasyDifficulty, "Easy");
+            var g_buttonMedium      = new c_Button(g_gridPosX, 370, g_cellSize * g_gridCells, 100, f_setMediumDifficulty, "Medium");
+            var g_buttonHard        = new c_Button(g_gridPosX, 490, g_cellSize * g_gridCells, 100, f_setHardDifficulty, "Hard");
+
+            var g_wasSolved         = false;
+            var g_showingMainMenu   = true;
+
+            g_buttonRestart.setActive(false);
+
+            //----------------------------------------Start----------------------------------------------------------------
+
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+            g_canvas.addEventListener("mousemove", function(event){
+                if(g_showingMainMenu){
+                    g_buttonEasy.setHovering(g_buttonEasy.hit(event.clientX, event.clientY));
+                    g_buttonMedium.setHovering(g_buttonMedium.hit(event.clientX, event.clientY));
+                    g_buttonHard.setHovering(g_buttonHard.hit(event.clientX, event.clientY));
+                }
+                else{
+                    g_buttonRestart.setHovering(g_buttonRestart.hit(event.clientX, event.clientY));
+                    if(g_wasSolved) return;
+                    if(g_grid.mouseIn(event.clientX, event.clientY)){
+                        g_grid.hit(event.clientX, event.clientY);
+                    }
+                    else{
+                        if(g_grid.cellBeingHoveredOn){
+                            g_grid.cellBeingHoveredOn.setHovering(false);
+                            g_grid.cellBeingHoveredOn = null;
+                        }
+                    }
+                }
+            });
+
+            g_canvas.addEventListener("click", function(event){
+                if(g_showingMainMenu){
+                    if(g_buttonEasy.hit(event.clientX, event.clientY)) g_buttonEasy.click();
+                    if(g_buttonMedium.hit(event.clientX, event.clientY)) g_buttonMedium.click();
+                    if(g_buttonHard.hit(event.clientX, event.clientY)) g_buttonHard.click();
+                }
+                else{
+                    if(g_buttonRestart.hit(event.clientX, event.clientY)) g_buttonRestart.click();
+                    if(g_wasSolved) return;
+                    if(g_grid.cellBeingHoveredOn){
+                        g_grid.click();
+                    }
+                }
+            });
+
+        </script>
+    </body>
+
+</html>
