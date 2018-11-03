@@ -1,0 +1,253 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "util.js"></script>
+        <script type = "text/javascript" src = "button.js"></script>
+        <script type = "text/javascript" src = "cell.js"></script>
+        <script type = "text/javascript" src = "snake.js"></script>
+        <script type = "text/javascript" src = "food.js"></script>
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="1366" height="868"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_drawBoundaryAndClearRect(){
+                g_context.fillStyle = g_colorBg;
+                g_context.fillRect(0,0,g_canvasWidth,g_canvasHeight);
+            }
+
+            function f_drawLine(l_pos_x, l_pos_y, l_padding){
+                g_context.fillStyle = "#BBBBBB";
+                g_context.fillRect(l_pos_x + l_padding, l_pos_y, g_canvasWidth - 2 * l_padding, 2);
+            }
+
+            function f_drawText(l_pos_x, l_pos_y, text, l_font_size = 48, l_color = "white"){
+                g_context.font = l_font_size.toString()+"px " + g_fontStyle;
+                g_context.textAlign = "center";
+                g_context.textBaseline = "middle";
+                g_context.fillStyle = l_color;
+                g_context.fillText(text, l_pos_x, l_pos_y);
+            }
+
+            function f_drawUI(){
+                g_context.fillStyle = g_colorUIBg;
+                g_context.fillRect(0, 0, g_canvasWidth, g_verticalOffset);
+                f_drawText(g_canvasWidth/4, g_fontSizeScore, "Player 1:  " + g_snake_1.score, g_fontSizeScore, g_colorSnake_1);
+                f_drawText(3*g_canvasWidth/4, g_fontSizeScore, "Player 2:  " + g_snake_2.score, g_fontSizeScore, g_colorSnake_2);
+            }
+
+            function f_drawEndScreenContents(){
+                f_drawText(g_canvasWidth/2, g_canvasHeight/2 - 50, "Player 1      " + g_snake_1.score, 32, g_colorSnake_1);
+                f_drawText(g_canvasWidth/2, g_canvasHeight/2, "Player 2      " + g_snake_2.score, 32, g_colorSnake_2);
+                g_buttonReturn.draw(g_context);
+            }
+
+            function f_drawMenuScreenContents(){
+                f_drawText(g_canvasWidth/2, 150, "SNAKE", 148, g_colorBtFontNorm);
+                g_buttonStart.draw(g_context);
+                g_buttonInstructions.draw(g_context);
+            }
+
+            function f_drawInstructionsScreenContents(){
+                f_drawText(g_canvasWidth/2, 150, "Instructions", 112, g_colorBtFontNorm);
+                f_drawText(g_canvasWidth/4, 300, "Player 1", 36, g_colorSnake_1);
+                f_drawText(3*g_canvasWidth/4, 300, "Player 2", 36, g_colorSnake_2);
+                f_drawText(g_canvasWidth/4, 380, "W -> Go Up", 24, g_colorBtFontNorm);
+                f_drawText(3*g_canvasWidth/4, 380, "Up Arrow -> Go Up", 24, g_colorBtFontNorm);
+                f_drawText(g_canvasWidth/4, 430, "S -> Go Down", 24, g_colorBtFontNorm);
+                f_drawText(3*g_canvasWidth/4, 430, "Down Arrow -> Go Down", 24, g_colorBtFontNorm);
+                f_drawText(g_canvasWidth/4, 480, "A -> Go Left", 24, g_colorBtFontNorm);
+                f_drawText(3*g_canvasWidth/4, 480, "Left Arrow -> Go Left", 24, g_colorBtFontNorm);
+                f_drawText(g_canvasWidth/4, 530, "D -> Go Right", 24, g_colorBtFontNorm);
+                f_drawText(3*g_canvasWidth/4, 530, "Right Arrow -> Go Right", 24, g_colorBtFontNorm);
+                g_buttonBack.draw(g_context);
+            }
+
+            //----------------------------------------Button Logic Related-------------------------------------------------------
+
+            function f_onRestartPressed(){
+                g_currentGameState = g_GAME_STATE_MENU;
+            }
+
+            function f_onStartPressed(){
+                g_snake_1.reset();
+                g_snake_2.reset();
+                g_food.reset();
+                g_currentGameState = g_GAME_STATE_PLAY;
+            }
+
+            function f_onInstructionsPressed(){
+                g_currentGameState = g_GAME_STATE_INST;
+            }
+
+            //----------------------------------------Game Logic Related-------------------------------------------------------
+
+
+            function f_runGame(){
+                g_food.update();
+
+                if (g_snake_1.move(g_input_array_1, g_snake_2, g_food) == g_snake_1.ERROR_DEAD
+                    || (g_snake_2.move(g_input_array_2, g_snake_1, g_food) == g_snake_2.ERROR_DEAD))
+                    g_currentGameState = g_GAME_STATE_END;
+
+                f_drawBoundaryAndClearRect();
+                g_snake_1.draw(g_context);
+                g_snake_2.draw(g_context);
+                g_food.draw(g_context);
+                f_drawUI();
+            }
+
+            function f_showMenu(){
+                f_drawBoundaryAndClearRect();
+                f_drawMenuScreenContents();
+            }
+
+            function f_showEndScreen(){
+                f_drawBoundaryAndClearRect();
+                f_drawUI();
+                f_drawEndScreenContents();
+            }
+
+            function f_showInstructionsScreen(){
+                f_drawBoundaryAndClearRect();
+                f_drawInstructionsScreenContents();
+            }
+
+            function f_gameLoop(){
+                if(g_currentGameState == g_GAME_STATE_PLAY){
+                    f_runGame();
+                }
+                else if (g_currentGameState == g_GAME_STATE_MENU){
+                    f_showMenu();
+                }
+                else if (g_currentGameState == g_GAME_STATE_END){
+                    f_showEndScreen();
+                }
+                else if(g_currentGameState == g_GAME_STATE_INST){
+                    f_showInstructionsScreen();
+                }
+            }
+
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            const g_frameRate           = 30;
+            const g_timePerFrame        = 1000/g_frameRate; //500;
+
+            const g_verticalOffset      = 48;
+
+            const g_GAME_STATE_MENU     = 0;
+            const g_GAME_STATE_PLAY     = 1;
+            const g_GAME_STATE_END      = 2;
+            const g_GAME_STATE_INST     = 3;
+
+            var g_canvas            = document.getElementById("MyCanvas");
+            var g_context           = g_canvas.getContext("2d");
+            var g_canvasWidth       = g_canvas.width;
+            var g_canvasHeight      = g_canvas.height;
+
+            var g_currentGameState  = g_GAME_STATE_MENU;
+
+            var g_fontSizeScore     = 24;
+            var g_fontStyle         = "OpenDyslexic";
+
+            var g_colorSnake_1      = "#FF0000";
+            var g_colorSnake_2      = "#0000FF";
+            var g_colorBg           = "#111111";
+            var g_colorUIBg         = "#000000";
+
+            var g_colorBtFontNorm   = "#FFFFFF";
+            var g_colorBtFontHover  = "#BBBBBB";
+
+            var g_colorTimer        = "#FFFFFF";
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_buttonReturn          = new c_Button(g_canvasWidth/2 - 150, g_canvasHeight/2 + 50,
+                                                    300, 70, f_onRestartPressed, "Restart",
+                                                    g_colorBg, g_colorUIBg, 24, g_fontStyle,
+                                                    g_colorBtFontNorm, g_colorBtFontHover
+                                                );
+            var g_buttonStart           = new c_Button(g_canvasWidth/2 - 150, g_canvasHeight/2,
+                                                    300, 70, f_onStartPressed, "Start Game",
+                                                    g_colorBg, g_colorUIBg, 24, g_fontStyle,
+                                                    g_colorBtFontNorm, g_colorBtFontHover
+                                                );
+            var g_buttonInstructions    = new c_Button(g_canvasWidth/2 - 150, g_canvasHeight/2 + 90,
+                                                    300, 70, f_onInstructionsPressed, "Instructions",
+                                                    g_colorBg, g_colorUIBg, 24, g_fontStyle,
+                                                    g_colorBtFontNorm, g_colorBtFontHover
+                                                );
+            var g_buttonBack            = new c_Button(g_canvasWidth/2 - 150, g_canvasHeight/2 + 200,
+                                                    300, 70, f_onRestartPressed, "Back",
+                                                    g_colorBg, g_colorUIBg, 24, g_fontStyle,
+                                                    g_colorBtFontNorm, g_colorBtFontHover
+                                                );
+
+
+            var g_snake_1       = new c_Snake(g_canvasWidth/2 - 200, g_canvasHeight/2, 5, g_colorSnake_1, g_canvasWidth, g_canvasHeight, g_verticalOffset);
+            var g_snake_2       = new c_Snake(g_canvasWidth/2 + 200, g_canvasHeight/2, 5, g_colorSnake_2, g_canvasWidth, g_canvasHeight, g_verticalOffset);
+            var g_food          = new c_Food(g_canvasWidth/2, g_canvasHeight/2, 16, g_canvasWidth, g_canvasHeight, g_verticalOffset, g_colorTimer, g_frameRate);
+
+            var g_input_array_1 = new Array(4);
+            var g_input_array_2 = new Array(4);
+
+            //----------------------------------------Start----------------------------------------------------------------
+
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+            g_canvas.addEventListener("mousemove", function(event){
+                if(g_currentGameState == g_GAME_STATE_END){
+                    g_buttonReturn.setHovering(g_buttonReturn.hit(event.clientX, event.clientY));
+                }
+                else if(g_currentGameState == g_GAME_STATE_MENU){
+                    g_buttonStart.setHovering(g_buttonStart.hit(event.clientX, event.clientY));
+                    g_buttonInstructions.setHovering(g_buttonInstructions.hit(event.clientX, event.clientY));
+                }
+                else if(g_currentGameState == g_GAME_STATE_INST){
+                    g_buttonBack.setHovering(g_buttonBack.hit(event.clientX, event.clientY));
+                }
+            });
+
+            g_canvas.addEventListener("click", function(event){
+                if(g_currentGameState == g_GAME_STATE_END){
+                    if(g_buttonReturn.hit(event.clientX, event.clientY)) g_buttonReturn.click();
+                }
+                else if (g_currentGameState == g_GAME_STATE_MENU){
+                    if(g_buttonStart.hit(event.clientX, event.clientY)) g_buttonStart.click();
+                    if(g_buttonInstructions.hit(event.clientX, event.clientY)) g_buttonInstructions.click();
+                }
+                else if (g_currentGameState == g_GAME_STATE_INST){
+                    if(g_buttonBack.hit(event.clientX, event.clientY)) g_buttonBack.click();
+                }
+            });
+
+            document.body.addEventListener("keydown", function (e) {
+                if(e.keyCode == 65) g_input_array_1[0] = true;
+                if(e.keyCode == 68) g_input_array_1[1] = true;
+                if(e.keyCode == 87) g_input_array_1[2] = true;
+                if(e.keyCode == 83) g_input_array_1[3] = true;
+
+                if(e.keyCode == 37) g_input_array_2[0] = true;
+                if(e.keyCode == 39) g_input_array_2[1] = true;
+                if(e.keyCode == 38) g_input_array_2[2] = true;
+                if(e.keyCode == 40) g_input_array_2[3] = true;
+            });
+            document.body.addEventListener("keyup", function (e) {
+                if(e.keyCode == 65) g_input_array_1[0] = false;
+                if(e.keyCode == 68) g_input_array_1[1] = false;
+                if(e.keyCode == 87) g_input_array_1[2] = false;
+                if(e.keyCode == 83) g_input_array_1[3] = false;
+
+                if(e.keyCode == 37) g_input_array_2[0] = false;
+                if(e.keyCode == 39) g_input_array_2[1] = false;
+                if(e.keyCode == 38) g_input_array_2[2] = false;
+                if(e.keyCode == 40) g_input_array_2[3] = false;
+            });
+
+
+        </script>
+    </body>
+
+</html>
