@@ -1,0 +1,192 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "util.js"></script>
+        <script type = "text/javascript" src = "cell.js"></script>
+        <script type = "text/javascript" src = "bitmap.js"></script>
+        <script type = "text/javascript" src = "brick.js"></script>
+        <script type = "text/javascript" src = "bunker.js"></script>
+        <script type = "text/javascript" src = "alien.js"></script>
+        <script type = "text/javascript" src = "alien_horde.js"></script>
+        <script type = "text/javascript" src = "bullet.js"></script>
+        <script type = "text/javascript" src = "spaceship.js"></script>
+
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="1024" height="768"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_drawBoundaryAndClearRect(){
+                g_context.fillStyle = g_colorBg;
+                g_context.fillRect(0, 0, g_canvasWidth, g_canvasHeight);
+            }
+
+            function f_drawLine(l_pos_x, l_pos_y, l_color, l_padding){
+                g_context.fillStyle = l_color;
+                g_context.fillRect(l_pos_x + l_padding, l_pos_y, g_canvasWidth - 2 * l_padding, 2);
+            }
+
+            function f_drawText(l_pos_x, l_pos_y, text, l_font_size = 48, l_color = "white"){
+                g_context.font = l_font_size.toString()+"px " + g_fontStyle;
+                g_context.textAlign = "center";
+                g_context.textBaseline = "middle";
+                g_context.fillStyle = l_color;
+                g_context.fillText(text, l_pos_x, l_pos_y);
+            }
+
+            function f_drawUI(){
+                f_drawText(114, 24, "SCORE:   " + g_player.score, g_fontSizeScore, g_colorUI);
+                for(var i=0; i < g_player.lives; i++){
+                    g_player_bmp_array[i].draw(g_context);
+                }
+            }
+
+            function f_drawEndScreenContents(){
+                f_drawText(g_canvasWidth/2, g_canvasHeight/2, "GAME OVER", g_fontSizeScore, g_colorUI);
+                f_drawText(g_canvasWidth/2, g_canvasHeight/2 + 2 * g_fontSizeScore, "You Scored:   " + g_player.score, g_fontSizeScore, g_colorUI);
+            }
+
+            function f_drawMenuScreenContents(){
+
+            }
+
+            function f_drawInstructionsScreenContents(){
+
+            }
+
+            //----------------------------------------Button Logic Related-------------------------------------------------------
+
+
+
+            //----------------------------------------Game Logic Related-------------------------------------------------------
+
+
+            function f_runGame(){
+                if(g_alien_horde.update(g_player) == g_alien_horde.INFO_WON) g_currentGameState = g_GAME_STATE_END;
+                if(g_player.update(g_input_array) == g_player.ERR_DIED) g_currentGameState = g_GAME_STATE_END;
+
+                for(var i=0; i<3; i++){
+                    g_bunker_array[i].update(g_player, g_alien_horde);
+                }
+
+                f_drawBoundaryAndClearRect();
+
+                g_alien_horde.draw(g_context);
+                g_player.draw(g_context);
+
+                for(var i=0; i<3; i++){
+                    g_bunker_array[i].draw(g_context);
+                }
+
+                f_drawUI();
+            }
+
+            function f_showMenu(){
+                f_drawBoundaryAndClearRect();
+                f_drawMenuScreenContents();
+            }
+
+            function f_showEndScreen(){
+                f_drawBoundaryAndClearRect();
+                f_drawEndScreenContents();
+            }
+
+            function f_showInstructionsScreen(){
+                f_drawBoundaryAndClearRect();
+                f_drawInstructionsScreenContents();
+            }
+
+            function f_gameLoop(){
+                if(g_currentGameState == g_GAME_STATE_PLAY){
+                    f_runGame();
+                }
+                else if (g_currentGameState == g_GAME_STATE_MENU){
+                    f_showMenu();
+                }
+                else if (g_currentGameState == g_GAME_STATE_END){
+                    f_showEndScreen();
+                }
+                else if(g_currentGameState == g_GAME_STATE_INST){
+                    f_showInstructionsScreen();
+                }
+            }
+
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            const g_frameRate           = 60;
+            const g_timePerFrame        = 1000/g_frameRate; //500;
+
+            const g_verticalOffset      = 48;
+
+            const g_GAME_STATE_MENU     = 0;
+            const g_GAME_STATE_PLAY     = 1;
+            const g_GAME_STATE_END      = 2;
+            const g_GAME_STATE_INST     = 3;
+
+            var g_canvas            = document.getElementById("MyCanvas");
+            var g_context           = g_canvas.getContext("2d");
+            var g_canvasWidth       = g_canvas.width;
+            var g_canvasHeight      = g_canvas.height;
+
+            var g_currentGameState  = g_GAME_STATE_PLAY;
+
+            var g_fontSizeScore     = 22;
+            var g_fontStyle         = "OpenDyslexic";
+
+            var g_colorBg           = "#000000";
+            var g_colorUI           = "#2A3BF7";
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_input_array           = new Array(3);
+
+            var g_player                = new c_Spaceship(g_canvasWidth/2 - 32, g_canvasHeight - 90, g_canvasWidth, g_canvasHeight, g_frameRate);
+            var g_alien_horde           = new c_AlienHorde(70, 180, g_canvasWidth, g_canvasHeight, g_frameRate);
+            var g_bunker_array          = new Array(3);
+
+            var g_player_bmp_array      = new Array(g_player.MAX_LIVES);
+
+
+            for(var i=0; i < g_player.MAX_LIVES; i++){
+                g_player_bmp_array[i] = new c_Bitmap(-20, -20, g_player.BMP_ROWS, g_player.BMP_COLS, 1.5, g_player.BMP_CELL_COLOR);
+                g_player_bmp_array[i].setBitmap(g_player.bitmapString);
+                g_player_bmp_array[i].setColor(g_colorUI);
+            }
+
+            g_player_bmp_array[0].setPosition(g_canvasWidth - 64, 16);
+            g_player_bmp_array[1].setPosition(g_canvasWidth - 108, 16);
+            g_player_bmp_array[2].setPosition(g_canvasWidth - 152, 16);
+
+
+            g_bunker_array[0] = new c_Bunker(g_canvasWidth/4 - 100, g_canvasHeight - 250);
+            g_bunker_array[1] = new c_Bunker(g_canvasWidth/2 - 32, g_canvasHeight - 250);
+            g_bunker_array[2] = new c_Bunker(3 * g_canvasWidth/4, g_canvasHeight - 250);
+
+
+            //----------------------------------------Start----------------------------------------------------------------
+
+            g_alien_horde.init();
+
+            for(var i=0; i<3; i++){
+                g_bunker_array[i].init();
+            }
+
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+            document.body.addEventListener("keydown", function (e) {
+                if(e.keyCode == 37) g_input_array[0] = true;
+                if(e.keyCode == 39) g_input_array[1] = true;
+                if(e.keyCode == 32) g_input_array[2] = true;
+            });
+            document.body.addEventListener("keyup", function (e) {
+                if(e.keyCode == 37) g_input_array[0] = false;
+                if(e.keyCode == 39) g_input_array[1] = false;
+                if(e.keyCode == 32) g_input_array[2] = false;
+            });
+
+        </script>
+    </body>
+
+</html>
