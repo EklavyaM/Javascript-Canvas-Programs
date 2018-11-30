@@ -1,0 +1,220 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "util.js"></script>
+        <script type = "text/javascript" src = "tile.js"></script>
+        <script type = "text/javascript" src = "map.js"></script>
+        <script type = "text/javascript" src = "dave.js"></script>
+        <script type = "text/javascript" src = "button.js"></script>
+
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="720" height="576"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_drawUI(l_context){
+                for(var i=0; i < g_maxLives; i++){
+                    g_livesArr[i].draw(l_context);
+                }
+
+                f_drawText(l_context, 100, 24, "SCORE:  " + g_scoreString, 24, g_fontStyle, g_fontColor);
+                f_drawText(l_context, g_canvasWidth / 2 , 24, "LEVEL 01", 24, g_fontStyle, g_fontColor);
+                f_drawText(l_context, 3 * g_canvasWidth / 4 + 32, 24, "DAVES:  ", 24, g_fontStyle, g_fontColor);
+
+                if(g_isCupTaken){
+                    f_drawText(l_context, g_canvasWidth / 2, g_canvasHeight - 24, "GO THRU THE DOOR!", 24, g_fontStyle, g_fontColor);
+                    g_cupLeft.draw(l_context);
+                    g_cupRight.draw(l_context);
+                }
+
+            }
+
+            function f_updateUI(l_dave){
+                g_tempScore = l_dave.score;
+                for(var i=g_scoreStringChars - 1; i>= 0; i--){
+                    g_scoreString = f_setCharAt(g_scoreString, i, g_tempScore % 10);
+                    g_tempScore = parseInt(g_tempScore/10);
+                }
+                g_isCupTaken = l_dave.tookCup;
+                for(var i=g_maxLives - 1; i >= 0; i--){
+                    if(i > l_dave.lives - 1) g_livesArr[i].isAlive = false;
+                }
+                if(l_dave.reachedDoor) g_gameState = g_STATE_WON;
+                if(l_dave.lives <= 0) g_gameState = g_STATE_LOST;
+            }
+
+            //----------------------------------------Button Logic Related-------------------------------------------------------
+
+            function f_onPlayPressed(){
+                g_gameState = g_STATE_PLAY;
+            }
+
+            function f_onRestartPressed(){
+                g_gameState = g_STATE_MENU;
+                for(var i=0; i<3; i++) g_inputArray[i] = false;
+                for(var i=0; i<g_maxLives; i++) g_livesArr[i].isAlive = true;
+                g_dave.reset();
+                g_map.reset();
+            }
+
+            //----------------------------------------Game Logic Related-------------------------------------------------------
+
+
+            function f_playGame(){
+                g_dave.update(g_inputArray, g_map);
+                f_updateUI(g_dave);
+
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, "black");
+                g_map.draw(g_context);
+                g_dave.draw(g_context);
+                f_drawUI(g_context);
+            }
+
+            function f_showMenu(){
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, "black");
+                f_drawText(g_context, g_canvasWidth/2, 200, "DANGEROUS DAVE!", 48, g_fontStyle, g_fontColor);
+                g_buttonPlay.draw(g_context);
+            }
+
+            function f_showWinScreen(){
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, "black");
+                f_drawText(g_context, g_canvasWidth/2, 200, "CONGRATULATIONS!", 48, g_fontStyle, g_fontColor);
+                f_drawText(g_context, g_canvasWidth/2, 300, "SCORE:   " + g_scoreString, 36, g_fontStyle, g_fontColor);
+                g_buttonRestart.draw(g_context);
+            }
+
+            function f_showLostScreen(){
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, "black");
+                f_drawText(g_context, g_canvasWidth/2, 200, "OOPS! You Lost", 48, g_fontStyle, g_fontColor);
+                f_drawText(g_context, g_canvasWidth/2, 300, "SCORE:   " + g_scoreString, 36, g_fontStyle, g_fontColor);
+                g_buttonRestart.draw(g_context);
+            }
+
+            function f_runState(l_state){
+                if(l_state == g_STATE_PLAY) f_playGame();
+                else if(l_state == g_STATE_MENU) f_showMenu();
+                else if(l_state == g_STATE_WON) f_showWinScreen();
+                else if(l_state == g_STATE_LOST) f_showLostScreen();
+            }
+
+            function f_gameLoop(){
+                f_runState(g_gameState);
+            }
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            const g_frameRate           = 60;
+            const g_timePerFrame        = 1000/g_frameRate; //500;
+
+            const g_STATE_PLAY          = 1;
+            const g_STATE_WON           = 2;
+            const g_STATE_LOST          = 3;
+            const g_STATE_MENU          = 4;
+
+            var g_gameState             = g_STATE_MENU;
+
+            var g_canvas            = document.getElementById("MyCanvas");
+            var g_context           = g_canvas.getContext("2d");
+            var g_canvasWidth       = g_canvas.width;
+            var g_canvasHeight      = g_canvas.height;
+
+            var g_inputArray        = new Array(3);
+
+            var g_fontColor        = "#55ff55";
+            var g_fontStyle        = "Noto Sans CJK KR Black";
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_scoreStringChars  = 5;
+            var g_scoreString       = "00000";
+
+            var g_tempScore         = 0;
+
+            var g_isCupTaken        = false;
+
+            var g_map               = new c_Map(12, 50, g_canvasWidth, g_canvasHeight, g_frameRate);
+            var g_dave              = new c_Dave(100, g_canvasHeight - 129, g_frameRate);
+
+            var g_maxLives          = g_dave.MAX_LIVES;
+
+            var g_cupImgArr         = [new Image()];
+            var g_livesImgArr       = [new Image()];
+
+            var g_livesArr          = new Array();
+
+            var g_cupLeft           = new c_Tile(g_canvasWidth / 3 - 44, g_canvasHeight - 38, 30, 30, g_cupImgArr, g_map.TYPE_NONE, 0);
+            var g_cupRight          = new c_Tile(2 * g_canvasWidth / 3 + 12, g_canvasHeight - 38, 30, 30, g_cupImgArr, g_map.TYPE_NONE, 0);
+
+            g_cupImgArr[0].src      = "img/cup5.png";
+            g_livesImgArr[0].src    = "img/lives.png";
+
+            for(var i=0; i < g_maxLives; i++){
+                g_livesArr.push(new c_Tile(g_canvasWidth - (g_maxLives - i - 1) * 28 - 38, 14, 24, 22, g_livesImgArr, g_map.TYPE_NONE, 0));
+            }
+
+            //----------------------------------------Button Related-------------------------------------------------------
+
+            var g_buttonPlay        = new c_Button(g_canvasWidth/2 - 125, g_canvasHeight/2 + 60, 240, 60, f_onPlayPressed, "PLAY", "#000000", g_fontColor, 24, g_fontStyle, g_fontColor, "#000000");
+            var g_buttonRestart     = new c_Button(g_canvasWidth/2 - 125, g_canvasHeight/2 + 80, 240, 60, f_onRestartPressed, "RESTART", "#000000", g_fontColor, 24, g_fontStyle, g_fontColor, "#000000");
+
+            //----------------------------------------Start----------------------------------------------------------------
+
+            g_dave.init();
+            g_map.init(
+                        "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "+
+                        "1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "+
+                        "1, 2, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 1, 1, "+
+                        "1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "+
+                        "1, 4, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 10, 10, 10, 0, 0, 10, 10, 0, 10, 10, 0, 0, "+
+                        "1, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 10, 0, 10, 0, 10, 0, 0, 0, 10, 0, 10, 0, "+
+                        "1, 0, 4, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 6, 1, 0, 4, 4, 4, 4, 4, 0, 1, 0, 0, 1, 1, 0, 7, 1, 0, 0, 0, 0, 1, 0, 0, 1, 10, 10, 10, 0, 10, 0, 0, 0, 10, 10, 0, 0, "+
+                        "1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 4, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 0, "+
+                        "1, 0, 0, 0, 4, 4, 4, 0, 2, 1, 0, 0, 0, 0, 1, 0, 3, 3, 3, 3, 3, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 10, 0, 0, 0, 0, 10, 10, 0, 10, 0, 10, 0, "+
+                        "1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 4, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 0, 0, 0, 1, 0, 0, 1, 7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "+
+                        "1, 1, 1, 5, 5, 5, 5, 5, 5, 1, 5, 5, 5, 5, 1, 8, 8, 8, 8, 8, 8, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, "+
+                        "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+                    );
+
+
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+            g_canvas.addEventListener("mousemove", function(event){
+                if(g_gameState == g_STATE_MENU){
+                    g_buttonPlay.setHovering(g_buttonPlay.hit(event.clientX, event.clientY));
+                }
+                else if(g_gameState == g_STATE_WON || g_gameState == g_STATE_LOST){
+                    g_buttonRestart.setHovering(g_buttonRestart.hit(event.clientX, event.clientY));
+                }
+            });
+
+            g_canvas.addEventListener("click", function(event){
+                if(g_gameState == g_STATE_MENU){
+                    if(g_buttonPlay.hit(event.clientX, event.clientY)) g_buttonPlay.click();
+                }
+                else if(g_gameState == g_STATE_WON || g_gameState == g_STATE_LOST){
+                    if(g_buttonRestart.hit(event.clientX, event.clientY)) g_buttonRestart.click();
+                }
+            });
+
+
+            document.body.addEventListener("keydown", function (e) {
+                if(g_gameState == g_STATE_PLAY){
+                    if(e.keyCode == 65) g_inputArray[0] = true;
+                    if(e.keyCode == 68) g_inputArray[1] = true;
+                    if(e.keyCode == 32) g_inputArray[2] = true;
+                }
+            });
+
+            document.body.addEventListener("keyup", function (e) {
+                if(g_gameState == g_STATE_PLAY){
+                    if(e.keyCode == 65) g_inputArray[0] = false;
+                    if(e.keyCode == 68) g_inputArray[1] = false;
+                    if(e.keyCode == 32) g_inputArray[2] = false;
+                }
+            });
+
+        </script>
+    </body>
+
+</html>
