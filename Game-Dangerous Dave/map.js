@@ -23,6 +23,7 @@ function c_Map(l_rows, l_columns, l_canvas_width, l_canvas_height, l_frame_rate)
     this.TYPE_WATER             = 8;
     this.TYPE_DOOR              = 9;
     this.TYPE_WEED              = 10;
+    this.TYPE_GUN               = 11;
 
     this.ANIM_SPEED_RED_TILE        = 0;
     this.ANIM_SPEED_RED_DIAMOND     = 0;
@@ -34,6 +35,7 @@ function c_Map(l_rows, l_columns, l_canvas_width, l_canvas_height, l_frame_rate)
     this.ANIM_SPEED_WATER           = l_frame_rate / 6;
     this.ANIM_SPEED_DOOR            = 0;
     this.ANIM_SPEED_WEED            = l_frame_rate / 6;
+    this.ANIM_SPEED_GUN             = 0;
 
 
     this.img_red_tile_array     = new Array();
@@ -46,6 +48,7 @@ function c_Map(l_rows, l_columns, l_canvas_width, l_canvas_height, l_frame_rate)
     this.img_water_array        = new Array();
     this.img_door_array         = new Array();
     this.img_weed_array         = new Array();
+    this.img_gun_array          = new Array();
 
     this.objects            = null;
     this.objectsLength      = -1;
@@ -114,6 +117,9 @@ function m_map_init_img_src(){
         this.img_weed_array.push(new Image());
         this.img_weed_array[i].src = "img/weed" + (i+1) + ".png";
     }
+
+    this.img_gun_array.push(new Image());
+    this.img_gun_array[0].src = "img/gun.png";
 }
 
 function m_map_set_map(l_map_string){
@@ -206,6 +212,11 @@ function m_map_set_tiles(){
                                                                 this.MAP_CELL_WIDTH, this.MAP_CELL_HEIGHT,
                                                                 this.img_weed_array, this.TYPE_WEED, this.ANIM_SPEED_WEED);
                 break;
+            case this.TYPE_GUN:
+                this.objects[this.tempObjCounter++] = new c_Tile(this.positionX + (i % this.MAP_COLUMNS) * this.MAP_CELL_WIDTH + this.MAP_CELL_WIDTH/6,
+                                                                this.positionY + Math.floor(i / this.MAP_COLUMNS) * this.MAP_CELL_HEIGHT + this.MAP_CELL_HEIGHT/2.2,
+                                                                2 * this.MAP_CELL_WIDTH/3, 1.5 * this.MAP_CELL_HEIGHT / 3,
+                                                                this.img_gun_array, this.TYPE_GUN, this.ANIM_SPEED_GUN);
         }
     }
 }
@@ -249,6 +260,11 @@ function m_map_reset(){
             this.tempObj = this.objects[this.tempObjCounter++];
             this.tempObj.positionX = this.positionX + (i % this.MAP_COLUMNS) * this.MAP_CELL_WIDTH;
             this.tempObj.positionY = this.positionY + Math.floor(i / this.MAP_COLUMNS) * this.MAP_CELL_HEIGHT + 2 * this.MAP_CELL_HEIGHT/3;
+        }
+        else if(this.mapData[i] == this.TYPE_GUN){
+            this.tempObj = this.objects[this.tempObjCounter++];
+            this.tempObj.positionX = this.positionX + (i % this.MAP_COLUMNS) * this.MAP_CELL_WIDTH + this.MAP_CELL_WIDTH/6;
+            this.tempObj.positionY = this.positionY + Math.floor(i / this.MAP_COLUMNS) * this.MAP_CELL_HEIGHT + this.MAP_CELL_HEIGHT/2.2;
         }
 
     }

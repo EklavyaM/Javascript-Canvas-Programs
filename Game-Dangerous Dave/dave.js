@@ -18,6 +18,7 @@ function c_Dave(l_pos_x, l_pos_y, l_frame_rate){
 
     this.imgArray           = new Array();
     this.deathImgArray      = new Array();
+    this.bulletImg          = new Image();
 
     this.currentFrame       = 0;
     this.maxFrames          = 0;
@@ -43,6 +44,7 @@ function c_Dave(l_pos_x, l_pos_y, l_frame_rate){
     this.tookCup            = false;
     this.isDying            = false;
     this.reachedDoor        = false;
+    this.canShoot           = false;
 
     this.mapXOnDeath        = 0;
     this.mapYOnDeath        = 0;
@@ -50,6 +52,9 @@ function c_Dave(l_pos_x, l_pos_y, l_frame_rate){
     this.isRespawning       = false;
 
     this.scaleX             = 1;
+
+    this.bullet             = new c_Bullet(this.bulletImg, 30, 8, l_frame_rate);
+
     this.draw           = m_dave_draw;
     this.init           = m_dave_init;
     this.update         = m_dave_update;
@@ -98,6 +103,8 @@ function m_dave_draw(l_context){
             this.respawn();
         }
     }
+
+    this.bullet.draw(l_context);
 }
 
 function m_dave_init(){
@@ -113,9 +120,15 @@ function m_dave_init(){
 
     this.maxFrames = this.imgArray.length;
     this.currentFrame = 0;
+
+    this.bulletImg.src = "img/monsterBullet.png";
+
 }
 
-function m_dave_update(l_input_array, l_map){
+function m_dave_update(l_input_array, l_map, l_monster){
+
+    this.bullet.update();
+    if((this.bullet.currentDir == this.bullet.DIR_RIGHT && this.bullet.positionX >= l_map.BOUNDARY_WIDTH) || (this.bullet.currentDir == this.bullet.DIR_LEFT && this.bullet.positionX <= -this.bullet.width)) this.bullet.die();
 
     if(this.isDying) return;
 
@@ -138,6 +151,11 @@ function m_dave_update(l_input_array, l_map){
             this.inAir = true;
         }
 
+        if(l_input_array[3] && this.canShoot){
+            if(this.scaleX == 1) this.bullet.shoot(this.positionX + this.width, this.positionY + this.height/2, this.bullet.DIR_RIGHT);
+            else if(this.scaleX == -1)this.bullet.shoot(this.positionX, this.positionY + this.height/2, this.bullet.DIR_LEFT);
+        }
+
         if(this.velocityX == 0){
             this.currentFrame = 0;
         }
@@ -146,22 +164,22 @@ function m_dave_update(l_input_array, l_map){
         }
     }
 
-    if(!this.isRespawning) this.move(l_map);
+    if(!this.isRespawning) this.move(l_map, l_monster);
 
-    this.moveScreen(l_map);
+    this.moveScreen(l_map, l_monster);
     this.resetBlocked();
 }
 
-function m_dave_move(l_map){
+function m_dave_move(l_map, l_monster){
     for(var i=0; i<this.SPEED_X; i++){
-        this.checkCollision(l_map);
+        this.checkCollision(l_map, l_monster);
         if(!(this.blockedLeft && this.velocityX < 0 || this.blockedRight && this.velocityX > 0)){
             this.positionX += this.velocityX;
         }
     }
 
     for(var i=0; i < Math.abs(this.velocityY); i++){
-        this.checkCollision(l_map);
+        this.checkCollision(l_map, l_monster);
         if(!this.blockedBottom && this.velocityY > 0){
             this.positionY += 1;
         }
@@ -172,7 +190,7 @@ function m_dave_move(l_map){
 
 }
 
-function m_dave_check_collision(l_map){
+function m_dave_check_collision(l_map, l_monster){
     for(var i=0; i<l_map.objectsLength; i++){
         if(!l_map.objects[i].isAlive) continue;
         this.tempCollisionDir = f_rectangleCollisionCheck(
@@ -219,22 +237,58 @@ function m_dave_check_collision(l_map){
                 l_map.objects[i].isAlive = false;
                 this.tookCup = true;
             }
+            if(l_map.objects[i].type == l_map.TYPE_GUN){
+                this.score += 200;
+                l_map.objects[i].isAlive = false;
+                this.canShoot = true;
+            }
             if(l_map.objects[i].type == l_map.TYPE_DOOR && this.tookCup){
                 this.reachedDoor = true;
             }
         }
     }
     if(!this.blockedBottom) this.inAir = true;
+
+    if(!this.isDying && l_monster.isAlive && !l_monster.isDying && f_rectangleCollisionCheck(
+        this.positionX, this.positionY, this.width, this.height,
+        l_monster.positionX, l_monster.positionY, l_monster.width, l_monster.height
+    )){
+        this.die(l_map.positionX, l_map.positionY);
+    }
+
+    if(!this.isDying && l_monster.bullet.isAlive && f_rectangleCollisionCheck(
+        this.positionX, this.positionY, this.width, this.height,
+        l_monster.bullet.positionX, l_monster.bullet.positionY, l_monster.bullet.width, l_monster.height
+    )){
+        this.die(l_map.positionX, l_map.positionY);
+        l_monster.bullet.die();
+    }
+
+    if(l_monster.isAlive && !l_monster.isDying && this.bullet.isAlive && f_rectangleCollisionCheck(
+        this.bullet.positionX, this.bullet.positionY, this.bullet.width, this.bullet.height,
+        l_monster.positionX, l_monster.positionY, l_monster.width, l_monster.height
+    )){
+        l_monster.die();
+        this.bullet.die();
+        this.score += 500;
+    }
+
 }
 
-function m_dave_move_screen(l_map){
+function m_dave_move_screen(l_map, l_monster){
     if(l_map.positionX >= l_map.BOUNDARY_WIDTH - l_map.MAP_WIDTH && this.positionX >=  0.55 * l_map.BOUNDARY_WIDTH){
         l_map.shift(-this.SPEED_X);
+        if(!l_monster.isDying) l_monster.pathCenterX -= this.SPEED_X;
+        else l_monster.positionX -= this.SPEED_X;
+        l_monster.bullet.positionX -= this.SPEED_X;
         this.positionX -= this.SPEED_X;
         return;
     }
     if(l_map.positionX <0 && this.positionX <= 0.45 * l_map.BOUNDARY_WIDTH){
         l_map.shift(this.SPEED_X);
+        if(!l_monster.isDying) l_monster.pathCenterX += this.SPEED_X;
+        else l_monster.positionX += this.SPEED_X;
+        l_monster.bullet.positionX += this.SPEED_X;
         this.positionX += this.SPEED_X;
         return;
     }
@@ -253,6 +307,11 @@ function m_dave_respawn(){
     this.positionX = this.mapXOnDeath + this.originalPositionX;
     this.positionY = this.mapYOnDeath + this.originalPositionY;
     this.lives--;
+
+    this.velocityX          = 0;
+    this.velocityY          = 0;
+    this.tempCollisionDir   = 0;
+    this.inAir              = false;
 }
 
 function m_dave_die(l_map_pos_x, l_map_pos_y){
@@ -283,6 +342,7 @@ function m_dave_reset(){
     this.tookCup            = false;
     this.isDying            = false;
     this.reachedDoor        = false;
+    this.canShoot           = false;
 
     this.mapXOnDeath        = 0;
     this.mapYOnDeath        = 0;
