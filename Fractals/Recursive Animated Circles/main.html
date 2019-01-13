@@ -1,0 +1,51 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "util.js"></script>
+        <script type = "text/javascript" src = "animated_circles.js"></script>
+        <script type = "text/javascript" src = "recursive_circles_animated.js"></script>
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="1366" height="768"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_gameLoop(){
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, g_bgColor);
+                g_animatedRecursiveCircle.draw(g_context);
+             }
+
+            //----------------------------------------Logic Related-------------------------------------------------------
+
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            var g_canvas        = document.getElementById("MyCanvas");
+            var g_context       = g_canvas.getContext("2d");
+            var g_canvasWidth   = g_canvas.width;
+            var g_canvasHeight  = g_canvas.height;
+
+            var g_frameRate     = 30;
+            var g_timePerFrame  = 1000/g_frameRate;
+
+            var g_initialRadius = Math.random() * g_canvasHeight/2 + 50;
+            var g_sizeFactor    = Math.random() * 0.4 + 0.15;
+            var g_animSpeed     = 0.02;
+            var g_strokeColor   = f_getRandomColor();
+            var g_bgColor       = "black";
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_animatedRecursiveCircle = new c_RecursiveCirclesAnimated(g_canvasWidth/2, g_canvasHeight/2, g_initialRadius,
+                                                                            g_animSpeed, g_strokeColor, g_timePerFrame,
+                                                                            g_sizeFactor);
+
+
+            //----------------------------------------Start----------------------------------------------------------------
+
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+        </script>
+    </body>
+
+</html>
