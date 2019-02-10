@@ -1,0 +1,286 @@
+<html>
+    <head>
+        <script type = "text/javascript" src = "util.js"></script>
+        <script type = "text/javascript" src = "bullet.js"></script>
+        <script type = "text/javascript" src = "tanker.js"></script>
+        <script type = "text/javascript" src = "enemy.js"></script>
+        <script type = "text/javascript" src = "powerup.js"></script>
+        <script type = "text/javascript" src = "spawner.js"></script>
+        <script type = "text/javascript" src = "button.js"></script>
+    </head>
+    <body>
+        <canvas id="MyCanvas" width="720" height="576"></canvas>
+        <script>
+
+            //----------------------------------------Game Window Related-------------------------------------------------------
+
+            function f_drawUI(l_context){
+                l_context.fillStyle = "black";
+                l_context.fillRect(0, 0, g_canvasWidth, g_scoreHeight);
+                f_drawText(l_context, g_canvasWidth/2, g_scoreHeight/2 + 1, g_score, 20, g_fontStyle, g_fontColor);
+            }
+
+            function f_drawInstructions(l_context){
+                f_drawText(l_context, g_canvasWidth/2, g_canvasHeight/2 - 200, "BUBBLE WARS", 48, g_fontStyle, "black", "center");
+                f_drawText(l_context, g_canvasWidth/2, g_canvasHeight/2 - 150, "HIGH SCORE " + g_highScore, 24, g_fontStyle, "black", "center");
+                f_drawText(l_context, g_canvasWidth/4 - 40, g_canvasHeight/2 - 45, "W -> Move Up", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, g_canvasWidth/4 - 40, g_canvasHeight/2 - 15, "S -> Move Down", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, g_canvasWidth/4 - 40, g_canvasHeight/2 + 15, "J -> Look Left", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, 3 * g_canvasWidth/4 - 40, g_canvasHeight/2 - 45, "A -> Move Left", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, 3 * g_canvasWidth/4 - 40, g_canvasHeight/2 - 15, "D -> Move Right", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, 3 * g_canvasWidth/4 - 40, g_canvasHeight/2 + 15, "K -> Look Right", 16, g_fontStyle, "black", "left");
+                f_drawText(l_context, g_canvasWidth/2, g_canvasHeight/2 + 60, "Space -> Shoot", 16, g_fontStyle, "black", "center");
+            }
+
+            //----------------------------------------Button Logic Related-------------------------------------------------------
+
+            function f_onRestartPressed(){
+                g_gameState = g_STATE_PLAY;
+                if(g_score > g_highScore) g_highScore = g_score;
+                g_score = 0;
+                f_resetState();
+            }
+
+            //----------------------------------------Game Logic Related-------------------------------------------------------
+
+            function f_input(l_inputArray){
+                g_currentRotateDir = 0;
+                g_currentMoveDirX = 0;
+                g_currentMoveDirY = 0;
+
+                if(l_inputArray[1]) g_currentMoveDirY += 1;
+                if(l_inputArray[0]) g_currentMoveDirY -= 1;
+                if(l_inputArray[3]) g_currentMoveDirX += 1;
+                if(l_inputArray[2]) g_currentMoveDirX -= 1;
+
+                if(l_inputArray[4]) g_currentRotateDir += -1;
+                if(l_inputArray[5]) g_currentRotateDir += 1;
+
+                if(l_inputArray[6]) g_tanker.shoot();
+            }
+
+            function f_resetState()
+            {
+                g_startGame = false;
+                g_tanker.reset();
+                g_spawner.reset();
+                g_spawner.setTarget(g_tanker.positionX, g_tanker.positionY);
+            }
+
+            function f_bulletToEnemyCollisionCheck()
+            {
+                for(var i=0; i<g_tanker.MAX_BULLETS; i++){
+                    if(!g_tanker.bullets[i].isAlive) continue;
+                    for(var j=0; j<g_spawner.MAX_ENEMIES; j++){
+                        if(!g_spawner.enemies[j].isAlive || g_spawner.enemies[j].isDying) continue;
+                        if(f_circleToCircleCollision(
+                            g_spawner.enemies[j].positionX, g_spawner.enemies[j].positionY, g_spawner.enemies[j].RADIUS,
+                            g_tanker.bullets[i].positionX, g_tanker.bullets[i].positionY, g_tanker.bullets[i].RADIUS
+                        )){
+                            g_spawner.enemies[j].hit()
+                            g_tanker.bullets[i].hit();
+                            g_score += 1;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function f_tankerToEnemyCollisionCheck()
+            {
+                for(var i=0; i<g_spawner.MAX_ENEMIES; i++){
+                    if(!g_spawner.enemies[i].isAlive || g_spawner.enemies[i].isDying) continue;
+                    if(f_circleToCircleCollision(
+                        g_spawner.enemies[i].positionX, g_spawner.enemies[i].positionY, g_spawner.enemies[i].RADIUS,
+                        g_tanker.positionX, g_tanker.positionY, g_tanker.TANKER_RADIUS
+                    )){
+                        if(g_spawner.enemies[i].state == g_spawner.enemies[i].STATE.DEFAULT){
+                            g_tanker.hit();
+                        }
+                        else{
+                            g_spawner.enemies[i].hit();
+                            g_score += 1;
+                        }
+                    }
+                }
+            }
+
+            function f_tankerToPowerupCollisionCheck()
+            {
+                if(!g_spawner.powerup.isAlive) return;
+                if(f_circleToCircleCollision(
+                    g_spawner.powerup.positionX, g_spawner.powerup.positionY, g_spawner.powerup.RADIUS,
+                    g_tanker.positionX, g_tanker.positionY, g_tanker.TANKER_RADIUS
+                )){
+                    g_spawner.setEnemiesReverse(true);
+                    if(g_spawner.powerup.state.TYPE == g_spawner.powerup.TYPES.MACHINE_GUN){
+                        g_tanker.setMachineGun();
+                    }
+                    else if(g_spawner.powerup.state.TYPE == g_spawner.powerup.TYPES.SHOT_GUN){
+                        g_tanker.setShotGun();
+                    }
+                    g_score += 5;
+                }
+            }
+
+            function f_bulletToPowerupCollisionCheck()
+            {
+                if(!g_spawner.powerup.isAlive) return;
+                for(var i=0; i < g_tanker.MAX_BULLETS; i++){
+                    if(!g_tanker.bullets[i].isAlive) continue;
+                    if(f_circleToCircleCollision(
+                        g_spawner.powerup.positionX, g_spawner.powerup.positionY, g_spawner.powerup.RADIUS,
+                        g_tanker.bullets[i].positionX, g_tanker.bullets[i].positionY, g_tanker.bullets[i].RADIUS
+                    )){
+                        g_tanker.bullets[i].hit();
+                        g_spawner.setEnemiesReverse(true);
+                        if(g_spawner.powerup.state.TYPE == g_spawner.powerup.TYPES.MACHINE_GUN){
+                        g_tanker.setMachineGun();
+                        }
+                        else if(g_spawner.powerup.state.TYPE == g_spawner.powerup.TYPES.SHOT_GUN){
+                            g_tanker.setShotGun();
+                        }
+                        g_score += 5;
+                        return;
+                    }
+                }
+            }
+
+            function f_logic(){
+                if(!g_startGame) return;
+                g_tanker.rotate(g_currentRotateDir);
+                if(g_tanker.update(g_currentMoveDirX, g_currentMoveDirY) != g_tanker.CODE_DIDNT_MOVE) {
+                    g_spawner.setTarget(g_tanker.positionX, g_tanker.positionY);
+                }
+                
+                if(g_spawner.update() == g_spawner.CODE_POWERUP_ENDED){
+                    g_tanker.setDefault();
+                }                
+
+                f_tankerToEnemyCollisionCheck();
+                f_bulletToEnemyCollisionCheck();
+                f_tankerToPowerupCollisionCheck();
+                f_bulletToPowerupCollisionCheck();
+            }
+            
+            function f_playGame(){
+
+                f_input(g_inputArray);
+                f_logic();
+
+                f_drawBoundaryAndClearRect(g_context, g_canvasWidth, g_canvasHeight, "white");
+                g_spawner.draw(g_context);
+                g_tanker.draw(g_context);
+                f_drawUI(g_context);
+                
+                if(!g_startGame) f_drawInstructions(g_context);
+
+                if(!g_tanker.isAlive) g_gameState = g_STATE_WON;
+            }
+
+            function f_showWinScreen(){
+                f_drawBoundaryAndClearRect(g_context ,g_canvasWidth, g_canvasHeight, "black");
+                f_drawText(g_context, g_canvasWidth/2, g_canvasHeight/2 - 60, "YOU DIED", 48, g_fontStyle, g_fontColor);
+                f_drawText(g_context, g_canvasWidth/2, g_canvasHeight/2, "SCORE: " + g_score, 36, g_fontStyle, g_fontColor);
+
+                g_buttonRestart.draw(g_context);
+            }
+
+            function f_runState(l_state){
+                if(l_state == g_STATE_PLAY) f_playGame();
+                else if(l_state == g_STATE_WON) f_showWinScreen();
+            }
+
+            function f_gameLoop(){
+                f_runState(g_gameState);
+            }
+
+            //----------------------------------------Window Related-------------------------------------------------------
+
+            const g_frameRate           = 60;
+            const g_timePerFrame        = 1000/g_frameRate; //500;
+
+            const g_STATE_PLAY          = 1;
+            const g_STATE_WON           = 2;
+
+            var g_gameState             = g_STATE_PLAY;
+
+            var g_canvas            = document.getElementById("MyCanvas");
+            var g_context           = g_canvas.getContext("2d");
+            var g_canvasWidth       = g_canvas.width;
+            var g_canvasHeight      = g_canvas.height;
+
+            var g_inputArray        = new Array(7);
+            var g_currentRotateDir  = 0;
+            var g_currentMoveDirX   = 0;
+            var g_currentMoveDirY   = 0;
+
+            var g_fontColor         = "white";
+            var g_fontStyle         = "Roboto Mono Medium"; //"Open Sans Light";//"system-ui"; //"Lithos Pro Regular";// 
+            
+            var g_score             = 0;
+            var g_highScore         = 0;
+            var g_scoreHeight       = 30;
+            var g_startGame         = false;
+
+            //----------------------------------------Object Related-------------------------------------------------------
+
+            var g_tanker            = new c_Tanker(g_canvasWidth/2, g_canvasHeight/2, g_canvasWidth, g_canvasHeight, "black", g_scoreHeight, g_frameRate);
+            var g_spawner           = new c_Spawner(g_tanker.positionX, g_tanker.positionY, g_canvasWidth, g_canvasHeight, g_frameRate);
+            
+            //----------------------------------------Button Related-------------------------------------------------------
+
+            var g_buttonRestart     = new c_Button(g_canvasWidth/2 - 105, g_canvasHeight/2 + 40 , 200, 45, f_onRestartPressed, "RESTART", "black", "white", 24, g_fontStyle, "white", "black");
+            
+            //----------------------------------------Start----------------------------------------------------------------
+
+            g_spawner.init();
+            g_tanker.init();
+            
+            var g_gameInterval = setInterval(f_gameLoop, g_timePerFrame);
+
+            g_canvas.addEventListener("mousemove", function(event){
+                if(g_gameState == g_STATE_WON){
+                    g_buttonRestart.setHovering(g_buttonRestart.hit(event.clientX, event.clientY));
+                }
+            });
+
+            g_canvas.addEventListener("click", function(event){
+                if(g_gameState == g_STATE_WON){
+                    if(g_buttonRestart.hit(event.clientX, event.clientY)) g_buttonRestart.click();
+                }
+            });
+
+
+            document.body.addEventListener("keydown", function (e) {
+                if(g_gameState == g_STATE_PLAY){
+                    if(e.keyCode == 87) g_inputArray[0] = true; // move up
+                    if(e.keyCode == 83) g_inputArray[1] = true; // move down
+                    if(e.keyCode == 65) g_inputArray[2] = true; // move left
+                    if(e.keyCode == 68) g_inputArray[3] = true; // move right
+                    if(e.keyCode == 74) g_inputArray[4] = true; // rotate left
+                    if(e.keyCode == 75) g_inputArray[5] = true; // rotate right
+                    if(e.keyCode == 32) g_inputArray[6] = true; // shoot
+                    g_startGame = true;
+                }
+                else if(g_gameState == g_STATE_WON){
+                    if(e.keyCode == 32) f_onRestartPressed();
+                }
+            });
+
+            document.body.addEventListener("keyup", function (e) {
+                if(g_gameState == g_STATE_PLAY){
+                    if(e.keyCode == 87) g_inputArray[0] = false; // move up
+                    if(e.keyCode == 83) g_inputArray[1] = false; // move down
+                    if(e.keyCode == 65) g_inputArray[2] = false; // move left
+                    if(e.keyCode == 68) g_inputArray[3] = false; // move right
+                    if(e.keyCode == 74) g_inputArray[4] = false; // rotate left
+                    if(e.keyCode == 75) g_inputArray[5] = false; // rotate right
+                    if(e.keyCode == 32) g_inputArray[6] = false; // shoot
+                }
+            });
+
+        </script>
+    </body>
+
+</html>
