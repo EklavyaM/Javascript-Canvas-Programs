@@ -43,9 +43,8 @@ function c_Tanker(l_pos_x, l_pos_y, l_screen_size_x, l_screen_size_y, l_tanker_c
     this.DIE_SPEED                  = (this.MAX_RADIUS - this.TANKER_RADIUS) / l_frameRate;
    
     this.MACHINE_GUN_SHOOT_DELAY    = 0.1 * l_frameRate;
-    this.SHOT_GUN_SHOOT_DELAY       = 0.4 * l_frameRate;
+    this.SHOT_GUN_SHOOT_DELAY       = 0.5 * l_frameRate;
     this.SHOT_GUN_BURST_COUNT       = 7;
-    this.SHOT_GUN_BURST_ANGLE       = 60;
 
     this.positionX                  = l_pos_x;
     this.positionY                  = l_pos_y;

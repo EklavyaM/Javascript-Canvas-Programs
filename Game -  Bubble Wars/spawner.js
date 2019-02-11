@@ -1,8 +1,8 @@
 function c_Spawner(l_tankerPosX, l_tankerPosY, l_width, l_height, l_frameRate){
     this.PI                     = 3.14;
     this.FRAME_RATE             = l_frameRate;
-    this.MAX_ENEMIES            = 70;
-    this.ENEMY_SPAWN_DELAY      = 0.8 * l_frameRate;
+    this.MAX_ENEMIES            = 50;
+    this.ENEMY_SPAWN_DELAY      = 0.8    * l_frameRate;
     
     this.POWERUP_TIMER          = 5 * l_frameRate;
     this.POWERUP_RADIUS         = 10;
@@ -10,7 +10,7 @@ function c_Spawner(l_tankerPosX, l_tankerPosY, l_width, l_height, l_frameRate){
     this.POWERUP_BODY_COL       = "black";
     this.POWERUP_SPAWN_DELAY    = 20 * l_frameRate; // 25
 
-    this.POWERUP_DURATION       = 4 * l_frameRate; // 4
+    this.POWERUP_DURATION       = 3 * l_frameRate; // 4
     
     this.BOUNDARY_WIDTH         = l_width;
     this.BOUNDARY_HEIGHT        = l_height;
@@ -43,7 +43,6 @@ function c_Spawner(l_tankerPosX, l_tankerPosY, l_width, l_height, l_frameRate){
     this.setTarget                  = m_spawner_set_target;
     this.reset                      = m_spawner_reset;
     this.spawnPowerup               = m_spawner_spawn_powerup;
-
     this.updateEnemies              = m_spawner_update_enemies;
     this.checkEnemySpawnTimer       = m_spawner_check_enemy_spawn_timer;
     this.checkPowerupSpawnTimer     = m_spawner_check_powerup_spawn_timer;
